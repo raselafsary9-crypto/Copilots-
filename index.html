@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="কো-পাইলট">
+<meta name="apple-mobile-web-app-title" content="Co-Pilot">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" id="icon">
-<title>কো-পাইলট</title>
+<title>Co-Pilot</title>
 <style>
 :root{--bg:#fafaf7;--card:#fff;--text:#1f2328;--muted:#6b7280;--accent:#c96442;--border:#e5e5df}
 @media (prefers-color-scheme:dark){:root{--bg:#1b1b19;--card:#262624;--text:#ececea;--muted:#9a9a94;--border:#3a3a36}}
@@ -32,28 +32,28 @@ button:disabled{opacity:.5}
 </style>
 </head>
 <body>
-<header><h1>✈️ কো-পাইলট</h1><div><button class="ib" id="clr">নতুন চ্যাট</button> <button class="ib" id="set">কী</button></div></header>
+<header><h1>✈️ Co-Pilot</h1><div><button class="ib" id="clr">New chat</button> <button class="ib" id="set">Key</button></div></header>
 <div class="modes" id="modes"></div>
 <div id="chat"></div>
-<form id="f"><textarea id="q" rows="1" placeholder="যা জানতে চান লিখুন..."></textarea><button class="send" id="b" type="submit">পাঠান</button></form>
+<form id="f"><textarea id="q" rows="1" placeholder="Type your question..."></textarea><button class="send" id="b" type="submit">Send</button></form>
 <script>
-const MODEL="gemini-4-hydrogen";
+const MODEL="gemini-4-hydrogen"; // change the model name here if it stops working
 const MODES={
-"সব কিছু":"তুমি একজন বন্ধুসুলভ বহুমুখী সহকারী।",
-"পড়াশোনা":"তুমি একজন ধৈর্যশীল শিক্ষক। সহজ উদাহরণ দিয়ে ধাপে ধাপে বোঝাও।",
-"লেখালেখি":"তুমি একজন লেখা-সহায়ক। ইমেইল, চিঠি ও আবেদন লেখো বা সম্পাদনা করো।",
-"ব্যবসা":"তুমি একজন ব্যবসায়িক পরামর্শদাতা। বাস্তবসম্মত পরামর্শ দাও।",
-"কোড":"তুমি একজন প্রোগ্রামিং সহায়ক। কোড লেখো ও সহজে ব্যাখ্যা করো।",
-"অনুবাদ":"তুমি একজন অনুবাদক। বাংলা ও ইংরেজির মধ্যে স্বাভাবিকভাবে অনুবাদ করো।"
+"General":"You are a friendly, versatile assistant.",
+"Study":"You are a patient teacher. Explain step by step with simple examples.",
+"Writing":"You are a writing assistant. Write or edit emails, letters and applications.",
+"Business":"You are a business advisor. Give practical advice.",
+"Code":"You are a programming assistant. Write code and explain it simply.",
+"Translate":"You are a translator. Translate naturally between Bengali and English."
 };
 const $=id=>document.getElementById(id);
 const store={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}}};
-let mode="সব কিছু",hist=[],busy=false;
+let mode="General",hist=[],busy=false;
 (function(){const c=document.createElement("canvas");c.width=c.height=180;const x=c.getContext("2d");x.fillStyle="#c96442";x.fillRect(0,0,180,180);x.font="100px serif";x.textAlign="center";x.textBaseline="middle";x.fillText("✈️",90,98);$("icon").href=c.toDataURL("image/png")})();
 function add(cls,t){const d=document.createElement("div");d.className="msg "+cls;d.textContent=t;$("chat").appendChild(d);$("chat").scrollTop=1e9;return d}
 function drawModes(){$("modes").textContent="";Object.keys(MODES).forEach(k=>{const c=document.createElement("button");c.type="button";c.className="chip"+(k===mode?" on":"");c.textContent=k;c.onclick=()=>{mode=k;drawModes()};$("modes").appendChild(c)})}
-function reset(){hist=[];$("chat").textContent="";add("bot","নমস্কার! আমি আপনার কো-পাইলট। কাজের ধরন বেছে প্রশ্ন করুন।")}
-function askKey(){const k=prompt("আপনার Gemini API কী বসান",store.get("key")||"");if(k!==null&&k.trim())store.set("key",k.trim())}
+function reset(){hist=[];$("chat").textContent="";add("bot","Hello! I'm your Co-Pilot. Pick a mode and ask anything.")}
+function askKey(){const k=prompt("Paste your Gemini API key",store.get("key")||"");if(k!==null&&k.trim())store.set("key",k.trim())}
 $("set").onclick=askKey;$("clr").onclick=reset;
 drawModes();reset();
 $("f").addEventListener("submit",async e=>{
@@ -61,14 +61,14 @@ $("f").addEventListener("submit",async e=>{
   if(!store.get("key")){askKey();if(!store.get("key"))return}
   busy=true;$("b").disabled=true;$("q").value="";add("me",text);
   hist.push({role:"user",content:text});
-  const out=add("bot","ভাবছি...");
+  const out=add("bot","Thinking...");
   try{
-    const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{method:"POST",headers:{"content-type":"application/json","x-goog-api-key":store.get("key")},body:JSON.stringify({systemInstruction:{parts:[{text:MODES[mode]+" সবসময় ব্যবহারকারীর ভাষায় (ডিফল্ট বাংলা) পরিষ্কার উত্তর দাও।"}]},contents:hist.slice(-20).map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}))})});
+    const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{method:"POST",headers:{"content-type":"application/json","x-goog-api-key":store.get("key")},body:JSON.stringify({systemInstruction:{parts:[{text:MODES[mode]+" Always reply clearly in the same language the user writes in."}]},contents:hist.slice(-20).map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}))})});
     const d=await r.json();
-    if(!r.ok)throw new Error(d.error&&d.error.message||"ত্রুটি");
-    const t=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(p=>p.text||"").join("")||"কোনো উত্তর পাওয়া যায়নি।";
+    if(!r.ok)throw new Error(d.error&&d.error.message||"Error");
+    const t=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(p=>p.text||"").join("")||"No answer received.";
     out.textContent=t;hist.push({role:"assistant",content:t});
-  }catch(err){hist.pop();out.textContent="সমস্যা: "+err.message+" (কী ঠিক আছে কিনা দেখুন)"}
+  }catch(err){hist.pop();out.textContent="Problem: "+err.message+" (try again, or check your key)"}
   busy=false;$("b").disabled=false;
 });
 </script>
