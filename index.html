@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="কো-পাইলট">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" id="icon">
+<title>কো-পাইলট</title>
+<style>
+:root{--bg:#fafaf7;--card:#fff;--text:#1f2328;--muted:#6b7280;--accent:#c96442;--border:#e5e5df}
+@media (prefers-color-scheme:dark){:root{--bg:#1b1b19;--card:#262624;--text:#ececea;--muted:#9a9a94;--border:#3a3a36}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"Noto Sans Bengali",sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+h1{font-size:1.1rem;margin:0}
+.ib{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:6px 10px;font-size:.85rem}
+.modes{display:flex;gap:8px;overflow-x:auto;padding:4px 12px 8px}
+.chip{flex:none;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:7px 14px;font-size:.85rem}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#chat{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:88%;padding:10px 14px;border-radius:16px;line-height:1.55;white-space:pre-wrap;word-wrap:break-word;font-size:.95rem}
+.bot{align-self:flex-start;background:var(--card);border:1px solid var(--border)}
+.me{align-self:flex-end;background:var(--accent);color:#fff}
+form{display:flex;gap:8px;padding:10px 12px}
+textarea{flex:1;resize:none;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:14px;padding:10px 12px;font:inherit;font-size:16px;max-height:120px}
+.send{border:0;background:var(--accent);color:#fff;border-radius:14px;padding:0 18px;font-size:1rem}
+button:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<header><h1>✈️ কো-পাইলট</h1><div><button class="ib" id="clr">নতুন চ্যাট</button> <button class="ib" id="set">কী</button></div></header>
+<div class="modes" id="modes"></div>
+<div id="chat"></div>
+<form id="f"><textarea id="q" rows="1" placeholder="যা জানতে চান লিখুন..."></textarea><button class="send" id="b" type="submit">পাঠান</button></form>
+<script>
+const MODEL="gemini-4-hydrogen";
+const MODES={
+"সব কিছু":"তুমি একজন বন্ধুসুলভ বহুমুখী সহকারী।",
+"পড়াশোনা":"তুমি একজন ধৈর্যশীল শিক্ষক। সহজ উদাহরণ দিয়ে ধাপে ধাপে বোঝাও।",
+"লেখালেখি":"তুমি একজন লেখা-সহায়ক। ইমেইল, চিঠি ও আবেদন লেখো বা সম্পাদনা করো।",
+"ব্যবসা":"তুমি একজন ব্যবসায়িক পরামর্শদাতা। বাস্তবসম্মত পরামর্শ দাও।",
+"কোড":"তুমি একজন প্রোগ্রামিং সহায়ক। কোড লেখো ও সহজে ব্যাখ্যা করো।",
+"অনুবাদ":"তুমি একজন অনুবাদক। বাংলা ও ইংরেজির মধ্যে স্বাভাবিকভাবে অনুবাদ করো।"
+};
+const $=id=>document.getElementById(id);
+const store={get:k=>{try{return localStorage.getItem(k)}catch(_){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(_){}}};
+let mode="সব কিছু",hist=[],busy=false;
+(function(){const c=document.createElement("canvas");c.width=c.height=180;const x=c.getContext("2d");x.fillStyle="#c96442";x.fillRect(0,0,180,180);x.font="100px serif";x.textAlign="center";x.textBaseline="middle";x.fillText("✈️",90,98);$("icon").href=c.toDataURL("image/png")})();
+function add(cls,t){const d=document.createElement("div");d.className="msg "+cls;d.textContent=t;$("chat").appendChild(d);$("chat").scrollTop=1e9;return d}
+function drawModes(){$("modes").textContent="";Object.keys(MODES).forEach(k=>{const c=document.createElement("button");c.type="button";c.className="chip"+(k===mode?" on":"");c.textContent=k;c.onclick=()=>{mode=k;drawModes()};$("modes").appendChild(c)})}
+function reset(){hist=[];$("chat").textContent="";add("bot","নমস্কার! আমি আপনার কো-পাইলট। কাজের ধরন বেছে প্রশ্ন করুন।")}
+function askKey(){const k=prompt("আপনার Gemini API কী বসান",store.get("key")||"");if(k!==null&&k.trim())store.set("key",k.trim())}
+$("set").onclick=askKey;$("clr").onclick=reset;
+drawModes();reset();
+$("f").addEventListener("submit",async e=>{
+  e.preventDefault();const text=$("q").value.trim();if(!text||busy)return;
+  if(!store.get("key")){askKey();if(!store.get("key"))return}
+  busy=true;$("b").disabled=true;$("q").value="";add("me",text);
+  hist.push({role:"user",content:text});
+  const out=add("bot","ভাবছি...");
+  try{
+    const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent",{method:"POST",headers:{"content-type":"application/json","x-goog-api-key":store.get("key")},body:JSON.stringify({systemInstruction:{parts:[{text:MODES[mode]+" সবসময় ব্যবহারকারীর ভাষায় (ডিফল্ট বাংলা) পরিষ্কার উত্তর দাও।"}]},contents:hist.slice(-20).map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:m.content}]}))})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error&&d.error.message||"ত্রুটি");
+    const t=((d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts)||[]).map(p=>p.text||"").join("")||"কোনো উত্তর পাওয়া যায়নি।";
+    out.textContent=t;hist.push({role:"assistant",content:t});
+  }catch(err){hist.pop();out.textContent="সমস্যা: "+err.message+" (কী ঠিক আছে কিনা দেখুন)"}
+  busy=false;$("b").disabled=false;
+});
+</script>
+</body>
+</html>
